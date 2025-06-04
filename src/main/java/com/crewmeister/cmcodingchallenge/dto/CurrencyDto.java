@@ -1,0 +1,17 @@
+package com.crewmeister.cmcodingchallenge.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+public class CurrencyDto {
+    @JsonProperty("code")
+    private String code;
+
+    @JsonProperty("name")
+    private String name;
+}
