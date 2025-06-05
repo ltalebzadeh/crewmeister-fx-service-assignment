@@ -88,10 +88,10 @@ class CurrencyControllerGetCurrenciesTest {
         LocalDate yesterday = today.minusDays(1);
 
         List<ExchangeRateDto> expectedRates = Arrays.asList(
-                new ExchangeRateDto("USD", "US Dollar", today, new BigDecimal("1.0500")),
-                new ExchangeRateDto("GBP", "British Pound", today, new BigDecimal("0.8500")),
-                new ExchangeRateDto("JPY", "Japanese Yen", today, new BigDecimal("130.2500")),
-                new ExchangeRateDto("USD", "US Dollar", yesterday, new BigDecimal("1.0480")),
+                new ExchangeRateDto("USD", "US Dollar", today, new BigDecimal("1.1384")),
+                new ExchangeRateDto("GBP", "British Pound", today, new BigDecimal("0.84210")),
+                new ExchangeRateDto("JPY", "Japanese Yen", today, new BigDecimal("164.15")),
+                new ExchangeRateDto("USD", "US Dollar", yesterday, new BigDecimal("1.1345")),
                 new ExchangeRateDto("GBP", "British Pound", yesterday, new BigDecimal("0.8520"))
         );
 
@@ -106,56 +106,54 @@ class CurrencyControllerGetCurrenciesTest {
                 .andExpect(jsonPath("$[0].currency_code", is("USD")))
                 .andExpect(jsonPath("$[0].currency_name", is("US Dollar")))
                 .andExpect(jsonPath("$[0].date", is(today.toString())))
-                .andExpect(jsonPath("$[0].rate", is(1.0500)))
+                .andExpect(jsonPath("$[0].rate", is(1.1384)))
 
                 .andExpect(jsonPath("$[1].currency_code", is("GBP")))
                 .andExpect(jsonPath("$[1].currency_name", is("British Pound")))
                 .andExpect(jsonPath("$[1].date", is(today.toString())))
-                .andExpect(jsonPath("$[1].rate", is(0.8500)))
+                .andExpect(jsonPath("$[1].rate", is(0.84210)))
 
                 .andExpect(jsonPath("$[2].currency_code", is("JPY")))
                 .andExpect(jsonPath("$[2].currency_name", is("Japanese Yen")))
                 .andExpect(jsonPath("$[2].date", is(today.toString())))
-                .andExpect(jsonPath("$[2].rate", is(130.2500)))
+                .andExpect(jsonPath("$[2].rate", is(164.15)))
 
                 .andExpect(jsonPath("$[3].currency_code", is("USD")))
                 .andExpect(jsonPath("$[3].date", is(yesterday.toString())))
-                .andExpect(jsonPath("$[3].rate", is(1.0480)));
+                .andExpect(jsonPath("$[3].rate", is(1.1345)));
 
         verify(exchangeRateService, times(1)).getAllExchangeRates();
     }
 
     @Test
     void getAllExchangeRates_ShouldFormatDatesCorrectly() throws Exception {
-        LocalDate date1 = LocalDate.of(2023, 12, 15);
-        LocalDate date2 = LocalDate.of(2023, 1, 5);
+        LocalDate date1 = LocalDate.of(2025, 6, 4);
+        LocalDate date2 = LocalDate.of(2025, 5, 14);
 
         List<ExchangeRateDto> rates = Arrays.asList(
-                new ExchangeRateDto("USD", "US Dollar", date1, new BigDecimal("1.0500")),
-                new ExchangeRateDto("GBP", "British Pound", date2, new BigDecimal("0.8500"))
+                new ExchangeRateDto("USD", "US Dollar", date1, new BigDecimal("1.1384")),
+                new ExchangeRateDto("GBP", "British Pound", date2, new BigDecimal("0.84210"))
         );
 
         when(exchangeRateService.getAllExchangeRates()).thenReturn(rates);
 
         mockMvc.perform(get("/api/exchange-rates"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].date", is("2023-12-15")))
-                .andExpect(jsonPath("$[1].date", is("2023-01-05")));
+                .andExpect(jsonPath("$[0].date", is("2025-06-04")))
+                .andExpect(jsonPath("$[1].date", is("2025-05-14")));
 
         verify(exchangeRateService, times(1)).getAllExchangeRates();
     }
 
     @Test
     void getExchangeRate_ShouldHandleDifferentCurrencies() throws Exception {
-        // Given
         String currencyCode = "GBP";
-        LocalDate date = LocalDate.of(2023, 12, 15);
+        LocalDate date = LocalDate.of(2025, 6, 4);
         ExchangeRateDto expectedRate = new ExchangeRateDto(
                 "GBP", "British Pound", date, new BigDecimal("0.8500"));
 
         when(exchangeRateService.getExchangeRate(currencyCode, date)).thenReturn(expectedRate);
 
-        // When & Then
         mockMvc.perform(get("/api/exchange-rates/{currency}/{date}", currencyCode, date))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currency_code", is("GBP")))
@@ -167,14 +165,12 @@ class CurrencyControllerGetCurrenciesTest {
 
     @Test
     void getExchangeRate_ShouldReturn404_WhenExchangeRateNotFound() throws Exception {
-        // Given
         String currencyCode = "USD";
         LocalDate date = LocalDate.of(1999, 1, 1);
 
         when(exchangeRateService.getExchangeRate(currencyCode, date))
                 .thenThrow(new ExchangeRateNotFoundException(currencyCode, date));
 
-        // When & Then
         mockMvc.perform(get("/api/exchange-rates/{currency}/{date}", currencyCode, date))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -190,11 +186,11 @@ class CurrencyControllerGetCurrenciesTest {
     void convertCurrency_ShouldReturnConversion_WhenValidParameters() throws Exception {
         BigDecimal amount = new BigDecimal("100.00");
         String currency = "USD";
-        LocalDate date = LocalDate.of(2023, 12, 15);
+        LocalDate date = LocalDate.of(2025, 6, 4);
 
         CurrencyConversionRates expectedConversion = new CurrencyConversionRates(
-                amount, "USD", new BigDecimal("95.238095"), "EUR",
-                new BigDecimal("1.050000"), date
+                amount, "USD", new BigDecimal("87.842586"), "EUR",
+                new BigDecimal("1.1384"), date
         );
 
         when(exchangeRateService.convertCurrency(amount, currency, date))
@@ -206,10 +202,10 @@ class CurrencyControllerGetCurrenciesTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.original_amount", is(100.00)))
                 .andExpect(jsonPath("$.original_currency", is("USD")))
-                .andExpect(jsonPath("$.converted_amount", is(95.238095)))
+                .andExpect(jsonPath("$.converted_amount", is(87.842586)))
                 .andExpect(jsonPath("$.target_currency", is("EUR")))
-                .andExpect(jsonPath("$.exchange_rate", is(1.050000)))
-                .andExpect(jsonPath("$.conversion_date", is("2023-12-15")));
+                .andExpect(jsonPath("$.exchange_rate", is(1.1384)))
+                .andExpect(jsonPath("$.conversion_date", is("2025-06-04")));
 
         verify(exchangeRateService, times(1)).convertCurrency(amount, currency, date);
     }
@@ -218,7 +214,7 @@ class CurrencyControllerGetCurrenciesTest {
     void convertCurrency_ShouldReturn422_WhenArithmeticException() throws Exception {
         BigDecimal amount = new BigDecimal("100.00");
         String currency = "USD";
-        LocalDate date = LocalDate.of(2023, 12, 15);
+        LocalDate date = LocalDate.of(2025, 6, 4);
 
         when(exchangeRateService.convertCurrency(amount, currency, date))
                 .thenThrow(new ArithmeticException("Non-terminating decimal expansion"));
