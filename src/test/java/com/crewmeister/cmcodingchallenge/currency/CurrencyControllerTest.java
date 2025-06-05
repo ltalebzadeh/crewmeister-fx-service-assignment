@@ -1,7 +1,9 @@
 package com.crewmeister.cmcodingchallenge.currency;
 
 import com.crewmeister.cmcodingchallenge.dto.CurrencyDto;
+import com.crewmeister.cmcodingchallenge.dto.ExchangeRateDto;
 import com.crewmeister.cmcodingchallenge.service.CurrencyService;
+import com.crewmeister.cmcodingchallenge.service.ExchangeRateService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -9,6 +11,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
@@ -25,6 +29,9 @@ class CurrencyControllerGetCurrenciesTest {
 
     @MockBean
     private CurrencyService currencyService;
+
+    @MockBean
+    private ExchangeRateService exchangeRateService;
 
     @Test
     void getCurrencies_ShouldReturnCurrencyList_WhenCurrenciesExist() throws Exception {
@@ -72,5 +79,68 @@ class CurrencyControllerGetCurrenciesTest {
                 .andExpect(jsonPath("$[*]", everyItem(hasKey("name"))));
 
         verify(currencyService, times(1)).getAllCurrencies();
+    }
+
+    @Test
+    void getAllExchangeRates_ShouldReturnExchangeRateList_WhenRatesExist() throws Exception {
+        LocalDate today = LocalDate.now();
+        LocalDate yesterday = today.minusDays(1);
+
+        List<ExchangeRateDto> expectedRates = Arrays.asList(
+                new ExchangeRateDto("USD", "US Dollar", today, new BigDecimal("1.0500")),
+                new ExchangeRateDto("GBP", "British Pound", today, new BigDecimal("0.8500")),
+                new ExchangeRateDto("JPY", "Japanese Yen", today, new BigDecimal("130.2500")),
+                new ExchangeRateDto("USD", "US Dollar", yesterday, new BigDecimal("1.0480")),
+                new ExchangeRateDto("GBP", "British Pound", yesterday, new BigDecimal("0.8520"))
+        );
+
+        when(exchangeRateService.getAllExchangeRates()).thenReturn(expectedRates);
+
+        mockMvc.perform(get("/api/exchange-rates")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$", hasSize(5)))
+
+                .andExpect(jsonPath("$[0].currency_code", is("USD")))
+                .andExpect(jsonPath("$[0].currency_name", is("US Dollar")))
+                .andExpect(jsonPath("$[0].date", is(today.toString())))
+                .andExpect(jsonPath("$[0].rate", is(1.0500)))
+
+                .andExpect(jsonPath("$[1].currency_code", is("GBP")))
+                .andExpect(jsonPath("$[1].currency_name", is("British Pound")))
+                .andExpect(jsonPath("$[1].date", is(today.toString())))
+                .andExpect(jsonPath("$[1].rate", is(0.8500)))
+
+                .andExpect(jsonPath("$[2].currency_code", is("JPY")))
+                .andExpect(jsonPath("$[2].currency_name", is("Japanese Yen")))
+                .andExpect(jsonPath("$[2].date", is(today.toString())))
+                .andExpect(jsonPath("$[2].rate", is(130.2500)))
+
+                .andExpect(jsonPath("$[3].currency_code", is("USD")))
+                .andExpect(jsonPath("$[3].date", is(yesterday.toString())))
+                .andExpect(jsonPath("$[3].rate", is(1.0480)));
+
+        verify(exchangeRateService, times(1)).getAllExchangeRates();
+    }
+
+    @Test
+    void getAllExchangeRates_ShouldFormatDatesCorrectly() throws Exception {
+        LocalDate date1 = LocalDate.of(2023, 12, 15);
+        LocalDate date2 = LocalDate.of(2023, 1, 5);
+
+        List<ExchangeRateDto> rates = Arrays.asList(
+                new ExchangeRateDto("USD", "US Dollar", date1, new BigDecimal("1.0500")),
+                new ExchangeRateDto("GBP", "British Pound", date2, new BigDecimal("0.8500"))
+        );
+
+        when(exchangeRateService.getAllExchangeRates()).thenReturn(rates);
+
+        mockMvc.perform(get("/api/exchange-rates"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].date", is("2023-12-15")))
+                .andExpect(jsonPath("$[1].date", is("2023-01-05")));
+
+        verify(exchangeRateService, times(1)).getAllExchangeRates();
     }
 }

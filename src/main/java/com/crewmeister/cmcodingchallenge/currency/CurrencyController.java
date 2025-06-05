@@ -1,9 +1,11 @@
 package com.crewmeister.cmcodingchallenge.currency;
 
 import com.crewmeister.cmcodingchallenge.dto.CurrencyDto;
+import com.crewmeister.cmcodingchallenge.dto.ExchangeRateDto;
 import com.crewmeister.cmcodingchallenge.entity.Currency;
 import com.crewmeister.cmcodingchallenge.entity.ExchangeRate;
 import com.crewmeister.cmcodingchallenge.service.CurrencyService;
+import com.crewmeister.cmcodingchallenge.service.ExchangeRateService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,9 +24,11 @@ import java.util.List;
 public class CurrencyController {
 
     private final CurrencyService currencyService;
+    private final ExchangeRateService exchangeRateService;
 
-    public CurrencyController(CurrencyService currencyService) {
+    public CurrencyController(CurrencyService currencyService, ExchangeRateService exchangeRateService) {
         this.currencyService = currencyService;
+        this.exchangeRateService = exchangeRateService;
     }
 
     /**
@@ -40,11 +44,9 @@ public class CurrencyController {
      * Get all EUR-FX exchange rates at all available dates
      */
     @GetMapping("/exchange-rates")
-    public ResponseEntity<List<ExchangeRate>> getAllExchangeRates() {
-        // TODO: Replace with service methods
-        List<ExchangeRate> exchangeRates = new ArrayList<>();
-
-        return ResponseEntity.ok(exchangeRates);
+    public ResponseEntity<List<ExchangeRateDto>> getAllExchangeRates() {
+        List<ExchangeRateDto> rates = exchangeRateService.getAllExchangeRates();
+        return ResponseEntity.ok(rates);
     }
 
     /**
