@@ -2,6 +2,7 @@ package com.crewmeister.cmcodingchallenge.currency;
 
 import com.crewmeister.cmcodingchallenge.dto.CurrencyDto;
 import com.crewmeister.cmcodingchallenge.dto.ExchangeRateDto;
+import com.crewmeister.cmcodingchallenge.exception.ExchangeRateNotFoundException;
 import com.crewmeister.cmcodingchallenge.service.CurrencyService;
 import com.crewmeister.cmcodingchallenge.service.ExchangeRateService;
 import org.junit.jupiter.api.Test;
@@ -142,5 +143,46 @@ class CurrencyControllerGetCurrenciesTest {
                 .andExpect(jsonPath("$[1].date", is("2023-01-05")));
 
         verify(exchangeRateService, times(1)).getAllExchangeRates();
+    }
+
+    @Test
+    void getExchangeRate_ShouldHandleDifferentCurrencies() throws Exception {
+        // Given
+        String currencyCode = "GBP";
+        LocalDate date = LocalDate.of(2023, 12, 15);
+        ExchangeRateDto expectedRate = new ExchangeRateDto(
+                "GBP", "British Pound", date, new BigDecimal("0.8500"));
+
+        when(exchangeRateService.getExchangeRate(currencyCode, date)).thenReturn(expectedRate);
+
+        // When & Then
+        mockMvc.perform(get("/api/exchange-rates/{currency}/{date}", currencyCode, date))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currency_code", is("GBP")))
+                .andExpect(jsonPath("$.currency_name", is("British Pound")))
+                .andExpect(jsonPath("$.rate", is(0.8500)));
+
+        verify(exchangeRateService, times(1)).getExchangeRate(currencyCode, date);
+    }
+
+    @Test
+    void getExchangeRate_ShouldReturn404_WhenExchangeRateNotFound() throws Exception {
+        // Given
+        String currencyCode = "USD";
+        LocalDate date = LocalDate.of(1999, 1, 1);
+
+        when(exchangeRateService.getExchangeRate(currencyCode, date))
+                .thenThrow(new ExchangeRateNotFoundException(currencyCode, date));
+
+        // When & Then
+        mockMvc.perform(get("/api/exchange-rates/{currency}/{date}", currencyCode, date))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status", is(404)))
+                .andExpect(jsonPath("$.error", is("Exchange Rate Not Found")))
+                .andExpect(jsonPath("$.message", containsString("USD")))
+                .andExpect(jsonPath("$.message", containsString("1999-01-01")));
+
+        verify(exchangeRateService, times(1)).getExchangeRate(currencyCode, date);
     }
 }

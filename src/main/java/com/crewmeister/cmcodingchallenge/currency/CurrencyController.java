@@ -2,8 +2,6 @@ package com.crewmeister.cmcodingchallenge.currency;
 
 import com.crewmeister.cmcodingchallenge.dto.CurrencyDto;
 import com.crewmeister.cmcodingchallenge.dto.ExchangeRateDto;
-import com.crewmeister.cmcodingchallenge.entity.Currency;
-import com.crewmeister.cmcodingchallenge.entity.ExchangeRate;
 import com.crewmeister.cmcodingchallenge.service.CurrencyService;
 import com.crewmeister.cmcodingchallenge.service.ExchangeRateService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -16,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController()
@@ -53,16 +50,14 @@ public class CurrencyController {
      * Get EUR-FX exchange rate for particular currency on particular day
      */
     @GetMapping("/exchange-rates/{currency}/{date}")
-    public ResponseEntity<ExchangeRate> getExchangeRate(
+    public ResponseEntity<ExchangeRateDto> getExchangeRate(
             @PathVariable
             String currency,
             @PathVariable
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate date) {
-        // TODO: Replace with service method
-        Currency currencyEntity = new Currency("hard code", currency);
-        ExchangeRate exchangeRate = new ExchangeRate(currencyEntity, date, new BigDecimal("1.0"));
-        return ResponseEntity.ok(exchangeRate);
+        ExchangeRateDto rate = exchangeRateService.getExchangeRate(currency, date);
+        return ResponseEntity.ok(rate);
     }
 
     /**
