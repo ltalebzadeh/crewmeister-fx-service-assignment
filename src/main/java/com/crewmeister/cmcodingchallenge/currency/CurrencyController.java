@@ -72,10 +72,7 @@ public class CurrencyController {
             @PathVariable
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate date) {
-        // TODO: Replace with service method
-        BigDecimal convertedAmount = new BigDecimal("100.0");
-        CurrencyConversionRates conversion =
-                new CurrencyConversionRates(amount, currency, convertedAmount, "EUR", new BigDecimal("1.0"), date);
-        return ResponseEntity.ok(conversion);
+        CurrencyConversionRates conversionResult = exchangeRateService.convertCurrency(amount, currency, date);
+        return ResponseEntity.ok(conversionResult);
     }
 }

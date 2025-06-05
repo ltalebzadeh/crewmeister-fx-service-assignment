@@ -1,5 +1,7 @@
 package com.crewmeister.cmcodingchallenge.currency;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -9,11 +11,23 @@ import java.time.LocalDate;
 @Data
 @AllArgsConstructor
 public class CurrencyConversionRates {
+    @JsonProperty("original_amount")
     private BigDecimal originalAmount;
+
+    @JsonProperty("original_currency")
     private String originalCurrency;
+
+    @JsonProperty("converted_amount")
     private BigDecimal convertedAmount;
+
+    @JsonProperty("target_currency")
     private String targetCurrency;
+
+    @JsonProperty("exchange_rate")
     private BigDecimal exchangeRate;
+
+    @JsonProperty("conversion_date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate date;
 
     public CurrencyConversionRates(double conversionRate) {

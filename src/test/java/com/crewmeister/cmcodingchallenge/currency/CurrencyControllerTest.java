@@ -185,4 +185,52 @@ class CurrencyControllerGetCurrenciesTest {
 
         verify(exchangeRateService, times(1)).getExchangeRate(currencyCode, date);
     }
+
+    @Test
+    void convertCurrency_ShouldReturnConversion_WhenValidParameters() throws Exception {
+        BigDecimal amount = new BigDecimal("100.00");
+        String currency = "USD";
+        LocalDate date = LocalDate.of(2023, 12, 15);
+
+        CurrencyConversionRates expectedConversion = new CurrencyConversionRates(
+                amount, "USD", new BigDecimal("95.238095"), "EUR",
+                new BigDecimal("1.050000"), date
+        );
+
+        when(exchangeRateService.convertCurrency(amount, currency, date))
+                .thenReturn(expectedConversion);
+
+        mockMvc.perform(get("/api/convert/{amount}/{currency}/{date}", amount, currency, date)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.original_amount", is(100.00)))
+                .andExpect(jsonPath("$.original_currency", is("USD")))
+                .andExpect(jsonPath("$.converted_amount", is(95.238095)))
+                .andExpect(jsonPath("$.target_currency", is("EUR")))
+                .andExpect(jsonPath("$.exchange_rate", is(1.050000)))
+                .andExpect(jsonPath("$.conversion_date", is("2023-12-15")));
+
+        verify(exchangeRateService, times(1)).convertCurrency(amount, currency, date);
+    }
+
+    @Test
+    void convertCurrency_ShouldReturn422_WhenArithmeticException() throws Exception {
+        BigDecimal amount = new BigDecimal("100.00");
+        String currency = "USD";
+        LocalDate date = LocalDate.of(2023, 12, 15);
+
+        when(exchangeRateService.convertCurrency(amount, currency, date))
+                .thenThrow(new ArithmeticException("Non-terminating decimal expansion"));
+
+        mockMvc.perform(get("/api/convert/{amount}/{currency}/{date}", amount, currency, date))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status", is(422)))
+                .andExpect(jsonPath("$.error", is("Currency Conversion Error")))
+                .andExpect(jsonPath("$.message", containsString("arithmetic error")))
+                .andExpect(jsonPath("$.message", containsString("Non-terminating decimal expansion")));
+
+        verify(exchangeRateService, times(1)).convertCurrency(amount, currency, date);
+    }
 }

@@ -1,5 +1,6 @@
 package com.crewmeister.cmcodingchallenge.service;
 
+import com.crewmeister.cmcodingchallenge.currency.CurrencyConversionRates;
 import com.crewmeister.cmcodingchallenge.dto.ExchangeRateDto;
 import com.crewmeister.cmcodingchallenge.entity.ExchangeRate;
 import com.crewmeister.cmcodingchallenge.exception.ExchangeRateNotFoundException;
@@ -8,6 +9,8 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +43,31 @@ public class ExchangeRateService {
         // TODO: fetch from external API if not found
 
         throw new ExchangeRateNotFoundException(currencyCode, date);
+    }
+
+    public CurrencyConversionRates convertCurrency(BigDecimal amount, String fromCurrency, LocalDate date) {
+        if ("EUR".equalsIgnoreCase(fromCurrency)) {
+            return new CurrencyConversionRates(
+                    amount,
+                    "EUR",
+                    amount,
+                    "EUR",
+                    BigDecimal.ONE,
+                    date
+            );
+        }
+
+        ExchangeRateDto exchangeRate = getExchangeRate(fromCurrency, date);
+        BigDecimal convertedAmount = amount.divide(exchangeRate.getRate(), 6, RoundingMode.HALF_UP);
+
+        return new CurrencyConversionRates(
+                amount,
+                fromCurrency.toUpperCase(),
+                convertedAmount,
+                "EUR",
+                exchangeRate.getRate(),
+                date
+        );
     }
 
     private ExchangeRateDto toDto(ExchangeRate exchangeRate) {
