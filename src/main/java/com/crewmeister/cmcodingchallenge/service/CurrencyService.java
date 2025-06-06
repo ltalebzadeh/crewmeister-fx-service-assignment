@@ -3,6 +3,8 @@ package com.crewmeister.cmcodingchallenge.service;
 import com.crewmeister.cmcodingchallenge.dto.CurrencyDto;
 import com.crewmeister.cmcodingchallenge.entity.Currency;
 import com.crewmeister.cmcodingchallenge.repository.CurrencyRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -11,6 +13,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class CurrencyService {
+    private static final Logger logger = LoggerFactory.getLogger(CurrencyService.class);
+
     private final CurrencyRepository currencyRepository;
 
     public CurrencyService(CurrencyRepository currencyRepository) {
@@ -18,6 +22,7 @@ public class CurrencyService {
     }
 
     public List<CurrencyDto> getAllCurrencies() {
+        logger.info("Getting all available currencies");
         List<Currency> currencies = currencyRepository.findAll();
         return currencies.stream()
                 .map(this::toDto)

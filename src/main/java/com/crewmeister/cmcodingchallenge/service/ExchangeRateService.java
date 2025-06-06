@@ -42,6 +42,7 @@ public class ExchangeRateService {
     }
 
     public List<ExchangeRateDto> getAllExchangeRates() {
+        logger.info("Getting all exchange rates");
         List<ExchangeRate> rates = exchangeRateRepository.findAllWithCurrency();
         return rates.stream()
                 .map(this::toDto)
@@ -49,16 +50,22 @@ public class ExchangeRateService {
     }
 
     public ExchangeRateDto getExchangeRate(String currencyCode, LocalDate date) {
+        logger.info("Getting exchange rate for currency: {} on date: {}", currencyCode, date);
         Optional<ExchangeRate> rate = exchangeRateRepository.findByCurrencyCodeAndRateDate(currencyCode.toUpperCase(), date);
         if (rate.isPresent()) {
+            logger.debug("Found exchange rate: {} for {}", rate.get().getRate(), currencyCode);
             return toDto(rate.get());
         }
 
+        logger.warn("Exchange rate not found for currency: {} on date: {}", currencyCode, date);
         throw new ExchangeRateNotFoundException(currencyCode, date);
     }
 
     public CurrencyConversionRates convertCurrency(BigDecimal amount, String fromCurrency, LocalDate date) {
+        logger.info("Converting {} {} to EUR on date: {}", amount, fromCurrency, date);
+
         if ("EUR".equalsIgnoreCase(fromCurrency)) {
+            logger.debug("No conversion needed - currency is already EUR");
             return new CurrencyConversionRates(
                     amount,
                     "EUR",
@@ -93,10 +100,13 @@ public class ExchangeRateService {
 
     @Transactional
     public void fetchAndStoreExchangeRates() {
+        logger.info("Starting to fetch exchange rates from external API");
         bundesbankClient.getExchangeRates()
                 .subscribe(response -> {
                     if (response.getDate() != null && !response.getRates().isEmpty()) {
                         storeExchangeRatesAndCurrencies(response);
+                    } else {
+                        logger.warn("Received empty or invalid response from API");
                     }
                 }, error -> logger.error("Failed to fetch exchange rates", error));
     }
