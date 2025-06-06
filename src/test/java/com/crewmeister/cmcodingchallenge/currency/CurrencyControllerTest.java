@@ -229,4 +229,64 @@ class CurrencyControllerGetCurrenciesTest {
 
         verify(exchangeRateService, times(1)).convertCurrency(amount, currency, date);
     }
+
+    @Test
+    void getExchangeRate_ShouldReturnValidationErrorsForInvalidPathVariables() throws Exception {
+
+        // invalid currency (code characters)
+        mockMvc.perform(get("/api/exchange-rates/usdt/2025-06-04"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Validation Failed"))
+                .andExpect(jsonPath("$.message", containsString("Currency code must be exactly 3 characters")))
+                .andExpect(jsonPath("$.path").value("Path variable validation error"));
+
+        // invalid date (future date)
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        mockMvc.perform(get("/api/exchange-rates/USD/" + futureDate))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Validation Failed"))
+                .andExpect(jsonPath("$.message", containsString("Date cannot be in the future")))
+                .andExpect(jsonPath("$.path").value("Path variable validation error"));
+    }
+
+    @Test
+    void convertCurrency_ShouldReturnValidationErrorsForInvalidPathVariables() throws Exception {
+
+        // invalid amount (negative)
+        mockMvc.perform(get("/api/convert/-100/USD/2023-12-15"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Validation Failed"))
+                .andExpect(jsonPath("$.message", containsString("Amount must be positive")))
+                .andExpect(jsonPath("$.path").value("Path variable validation error"));
+
+        // invalid currency (code characters)
+        mockMvc.perform(get("/api/convert/100.50/usdt/2023-12-15"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Validation Failed"))
+                .andExpect(jsonPath("$.message", containsString("Currency code must be exactly 3 characters")))
+                .andExpect(jsonPath("$.path").value("Path variable validation error"));
+
+        // invalid date (future date)
+        LocalDate futureDate = LocalDate.now().plusDays(1);
+        mockMvc.perform(get("/api/convert/100.50/USD/" + futureDate))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Validation Failed"))
+                .andExpect(jsonPath("$.message", containsString("Date cannot be in the future")))
+                .andExpect(jsonPath("$.path").value("Path variable validation error"));
+    }
 }
