@@ -65,8 +65,8 @@ class ExchangeRateRepositoryTest {
     }
 
     @Test
-    void findByCurrencyCodeAndDate_ShouldFindExactMatch() {
-        Optional<ExchangeRate> result = exchangeRateRepository.findByCurrencyCodeAndDate("USD", today);
+    void findByCurrencyCodeAndDate_ShouldFindExactMatchRate() {
+        Optional<ExchangeRate> result = exchangeRateRepository.findByCurrencyCodeAndRateDate("USD", today);
 
         assertTrue(result.isPresent());
         ExchangeRate rate = result.get();
@@ -76,8 +76,8 @@ class ExchangeRateRepositoryTest {
     }
 
     @Test
-    void findByCurrencyCodeAndDate_ShouldReturnEmpty_ForNonExistent() {
-        Optional<ExchangeRate> result = exchangeRateRepository.findByCurrencyCodeAndDate("USD", today.plusDays(10));
+    void findByCurrencyCodeAndRateDate_ShouldReturnEmpty_ForNonExistent() {
+        Optional<ExchangeRate> result = exchangeRateRepository.findByCurrencyCodeAndRateDate("USD", today.plusDays(10));
 
         assertFalse(result.isPresent());
     }

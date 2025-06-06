@@ -1,22 +1,28 @@
 package com.crewmeister.cmcodingchallenge.service;
 
+import com.crewmeister.cmcodingchallenge.client.BundesbankApiClient;
 import com.crewmeister.cmcodingchallenge.currency.CurrencyConversionRates;
+import com.crewmeister.cmcodingchallenge.dto.BundesbankResponse;
 import com.crewmeister.cmcodingchallenge.dto.ExchangeRateDto;
 import com.crewmeister.cmcodingchallenge.entity.Currency;
 import com.crewmeister.cmcodingchallenge.entity.ExchangeRate;
 import com.crewmeister.cmcodingchallenge.exception.ExchangeRateNotFoundException;
+import com.crewmeister.cmcodingchallenge.repository.CurrencyRepository;
 import com.crewmeister.cmcodingchallenge.repository.ExchangeRateRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,15 +36,22 @@ class ExchangeRateServiceTest {
     private ExchangeRateRepository exchangeRateRepository;
 
     @Mock
+    private CurrencyRepository currencyRepository;
+
+    @Mock
     private CurrencyService currencyService;
 
     @InjectMocks
     private ExchangeRateService exchangeRateService;
 
+    @Mock
+    private BundesbankApiClient bundesbankApiClient;
+
     private Currency usdCurrency;
     private Currency gbpCurrency;
     private Currency jpyCurrency;
     private LocalDate testDate;
+    private BundesbankResponse successfulResponse;
 
     @BeforeEach
     void setUp() {
@@ -46,6 +59,11 @@ class ExchangeRateServiceTest {
         gbpCurrency = new Currency("GBP", "British Pound");
         jpyCurrency = new Currency("JPY", "Japanese Yen");
         testDate = LocalDate.of(2025, 6, 4);
+
+        successfulResponse = BundesbankResponse.success(testDate, "ECB");
+        successfulResponse.addCurrency("USD", "US Dollar", new BigDecimal("1.1411"));
+        successfulResponse.addCurrency("GBP", "British Pound Sterling", new BigDecimal("0.8426"));
+        successfulResponse.addCurrency("JPY", "Japanese Yen", new BigDecimal("164.62"));
     }
 
     @Test
@@ -94,9 +112,9 @@ class ExchangeRateServiceTest {
         ExchangeRate gbpRate = new ExchangeRate(gbpCurrency, testDate, new BigDecimal("0.8500"));
         String jpyCode = "JPY";
         ExchangeRate jpyRate = new ExchangeRate(jpyCurrency, yesterday, new BigDecimal("130.2500"));
-        when(exchangeRateRepository.findByCurrencyCodeAndDate(gbpCode, testDate))
+        when(exchangeRateRepository.findByCurrencyCodeAndRateDate(gbpCode, testDate))
                 .thenReturn(Optional.of(gbpRate));
-        when(exchangeRateRepository.findByCurrencyCodeAndDate(jpyCode, yesterday))
+        when(exchangeRateRepository.findByCurrencyCodeAndRateDate(jpyCode, yesterday))
                 .thenReturn(Optional.of(jpyRate));
 
         ExchangeRateDto gbpResult = exchangeRateService.getExchangeRate(gbpCode, testDate);
@@ -110,8 +128,8 @@ class ExchangeRateServiceTest {
         assertEquals("Japanese Yen", jpyResult.getCurrencyName());
         assertEquals(new BigDecimal("130.2500"), jpyResult.getRate());
 
-        verify(exchangeRateRepository, times(1)).findByCurrencyCodeAndDate(gbpCode, testDate);
-        verify(exchangeRateRepository, times(1)).findByCurrencyCodeAndDate(jpyCode, yesterday);
+        verify(exchangeRateRepository, times(1)).findByCurrencyCodeAndRateDate(gbpCode, testDate);
+        verify(exchangeRateRepository, times(1)).findByCurrencyCodeAndRateDate(jpyCode, yesterday);
     }
 
     @Test
@@ -137,7 +155,7 @@ class ExchangeRateServiceTest {
         BigDecimal amount = new BigDecimal("100.00");
         String currency = "USD";
         ExchangeRate exchangeRate = new ExchangeRate(usdCurrency, testDate, new BigDecimal("1.1384"));
-        when(exchangeRateRepository.findByCurrencyCodeAndDate("USD", testDate))
+        when(exchangeRateRepository.findByCurrencyCodeAndRateDate("USD", testDate))
                 .thenReturn(Optional.of(exchangeRate));
 
         CurrencyConversionRates result = exchangeRateService.convertCurrency(amount, currency, testDate);
@@ -153,7 +171,7 @@ class ExchangeRateServiceTest {
         BigDecimal expectedConverted = amount.divide(new BigDecimal("1.1384"), 6, RoundingMode.HALF_UP);
         assertEquals(expectedConverted, result.getConvertedAmount());
 
-        verify(exchangeRateRepository, times(1)).findByCurrencyCodeAndDate("USD", testDate);
+        verify(exchangeRateRepository, times(1)).findByCurrencyCodeAndRateDate("USD", testDate);
     }
 
     @Test
@@ -161,7 +179,7 @@ class ExchangeRateServiceTest {
         BigDecimal amount = new BigDecimal("16415.00");
         String currency = "JPY";
         ExchangeRate exchangeRate = new ExchangeRate(jpyCurrency, testDate, new BigDecimal("164.15"));
-        when(exchangeRateRepository.findByCurrencyCodeAndDate("JPY", testDate))
+        when(exchangeRateRepository.findByCurrencyCodeAndRateDate("JPY", testDate))
                 .thenReturn(Optional.of(exchangeRate));
 
         CurrencyConversionRates result = exchangeRateService.convertCurrency(amount, currency, testDate);
@@ -176,14 +194,14 @@ class ExchangeRateServiceTest {
         BigDecimal expectedConverted = amount.divide(new BigDecimal("164.15"), 6, RoundingMode.HALF_UP);
         assertEquals(expectedConverted, result.getConvertedAmount());
 
-        verify(exchangeRateRepository, times(1)).findByCurrencyCodeAndDate("JPY", testDate);
+        verify(exchangeRateRepository, times(1)).findByCurrencyCodeAndRateDate("JPY", testDate);
     }
 
     @Test
     void convertCurrency_ShouldThrowException_WhenExchangeRateNotFound() {
         BigDecimal amount = new BigDecimal("100.00");
         String currency = "SOMETHING";
-        when(exchangeRateRepository.findByCurrencyCodeAndDate("SOMETHING", testDate))
+        when(exchangeRateRepository.findByCurrencyCodeAndRateDate("SOMETHING", testDate))
                 .thenReturn(Optional.empty())
                 .thenReturn(Optional.empty());
 
@@ -195,6 +213,143 @@ class ExchangeRateServiceTest {
         assertTrue(exception.getMessage().contains("SOMETHING"));
         assertTrue(exception.getMessage().contains(testDate.toString()));
 
-        verify(exchangeRateRepository, times(1)).findByCurrencyCodeAndDate("SOMETHING", testDate);
+        verify(exchangeRateRepository, times(1)).findByCurrencyCodeAndRateDate("SOMETHING", testDate);
+    }
+
+    @Test
+    void fetchAndStoreExchangeRates_ShouldSucceed() {
+        Currency usdCurrency = new Currency("USD", "US Dollar");
+        Currency gbpCurrency = new Currency("GBP", "British Pound Sterling");
+        Currency jpyCurrency = new Currency("JPY", "Japanese Yen");
+
+        when(bundesbankApiClient.getExchangeRates()).thenReturn(Mono.just(successfulResponse));
+        when(currencyService.findByCode("USD")).thenReturn(Optional.of(usdCurrency));
+        when(currencyService.findByCode("GBP")).thenReturn(Optional.of(gbpCurrency));
+        when(currencyService.findByCode("JPY")).thenReturn(Optional.of(jpyCurrency));
+        when(exchangeRateRepository.findByRateDate(testDate)).thenReturn(Collections.emptyList());
+        when(currencyRepository.saveAll(anyList())).thenReturn(Collections.emptyList());
+        when(exchangeRateRepository.saveAll(anyList())).thenReturn(Collections.emptyList());
+
+        exchangeRateService.fetchAndStoreExchangeRates();
+
+        verify(bundesbankApiClient, timeout(1000)).getExchangeRates();
+
+        ArgumentCaptor<List<Currency>> currencyCaptor = ArgumentCaptor.forClass(List.class);
+        verify(currencyRepository).saveAll(currencyCaptor.capture());
+        List<Currency> savedCurrencies = currencyCaptor.getValue();
+        assertEquals(3, savedCurrencies.size());
+
+        ArgumentCaptor<List<ExchangeRate>> rateCaptor = ArgumentCaptor.forClass(List.class);
+        verify(exchangeRateRepository).saveAll(rateCaptor.capture());
+        List<ExchangeRate> savedRates = rateCaptor.getValue();
+        assertEquals(3, savedRates.size());
+
+        verify(currencyService, atLeast(1)).findByCode("USD");
+        verify(currencyService, atLeast(1)).findByCode("GBP");
+        verify(currencyService, atLeast(1)).findByCode("JPY");
+    }
+
+    @Test
+    void fetchAndStoreExchangeRates_ShouldHandleApiError() {
+        when(bundesbankApiClient.getExchangeRates())
+                .thenReturn(Mono.error(new RuntimeException("API connection failed")));
+
+        exchangeRateService.fetchAndStoreExchangeRates();
+
+        verify(bundesbankApiClient, timeout(1000)).getExchangeRates();
+        verify(currencyRepository, never()).saveAll(anyList());
+        verify(exchangeRateRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void fetchAndStoreExchangeRates_ShouldUpdateExistingCurrencies() {
+        Currency existingUsd = new Currency("USD", "Old US Dollar Name");
+        Currency existingGbp = new Currency("GBP", "British Pound");
+        Currency newJpy = new Currency("JPY", "Japanese Yen");
+
+        when(bundesbankApiClient.getExchangeRates()).thenReturn(Mono.just(successfulResponse));
+        when(currencyService.findByCode("USD")).thenReturn(Optional.of(existingUsd));
+        when(currencyService.findByCode("GBP")).thenReturn(Optional.of(existingGbp));
+        when(currencyService.findByCode("JPY"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(newJpy));
+        when(exchangeRateRepository.findByRateDate(testDate)).thenReturn(Collections.emptyList());
+        when(currencyRepository.saveAll(anyList())).thenReturn(Collections.emptyList());
+        when(exchangeRateRepository.saveAll(anyList())).thenReturn(Collections.emptyList());
+
+        exchangeRateService.fetchAndStoreExchangeRates();
+
+        verify(bundesbankApiClient, timeout(1000)).getExchangeRates();
+
+        ArgumentCaptor<List<Currency>> currencyCaptor = ArgumentCaptor.forClass(List.class);
+        verify(currencyRepository).saveAll(currencyCaptor.capture());
+        List<Currency> savedCurrencies = currencyCaptor.getValue();
+
+        assertEquals(3, savedCurrencies.size());
+
+        Currency updatedUsd = savedCurrencies.stream()
+                .filter(c -> "USD".equals(c.getCode()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(updatedUsd);
+        assertEquals("US Dollar", updatedUsd.getName());
+    }
+
+    @Test
+    void fetchAndStoreExchangeRates_ShouldUpdateExistingRates() {
+        Currency usdCurrency = new Currency("USD", "US Dollar");
+        Currency gbpCurrency = new Currency("GBP", "British Pound Sterling");
+
+        ExchangeRate existingUsdRate = new ExchangeRate(usdCurrency, testDate, new BigDecimal("1.0000"));
+        List<ExchangeRate> existingRates = Arrays.asList(existingUsdRate);
+
+        BundesbankResponse singleCurrencyResponse = BundesbankResponse.success(testDate, "ECB");
+        singleCurrencyResponse.addCurrency("USD", "US Dollar", new BigDecimal("1.1411"));
+        singleCurrencyResponse.addCurrency("GBP", "British Pound Sterling", new BigDecimal("0.8426"));
+
+        when(bundesbankApiClient.getExchangeRates()).thenReturn(Mono.just(singleCurrencyResponse));
+        when(currencyService.findByCode("USD")).thenReturn(Optional.of(usdCurrency));
+        when(currencyService.findByCode("GBP")).thenReturn(Optional.of(gbpCurrency));
+        when(exchangeRateRepository.findByRateDate(testDate)).thenReturn(existingRates);
+        when(currencyRepository.saveAll(anyList())).thenReturn(Collections.emptyList());
+        when(exchangeRateRepository.saveAll(anyList())).thenReturn(Collections.emptyList());
+
+        exchangeRateService.fetchAndStoreExchangeRates();
+
+        verify(bundesbankApiClient, timeout(1000)).getExchangeRates();
+
+        ArgumentCaptor<List<ExchangeRate>> rateCaptor = ArgumentCaptor.forClass(List.class);
+        verify(exchangeRateRepository).saveAll(rateCaptor.capture());
+        List<ExchangeRate> savedRates = rateCaptor.getValue();
+
+        assertEquals(2, savedRates.size());
+
+        ExchangeRate updatedUsdRate = savedRates.stream()
+                .filter(r -> "USD".equals(r.getCurrency().getCode()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(updatedUsdRate);
+        assertEquals(new BigDecimal("1.1411"), updatedUsdRate.getRate());
+    }
+
+    @Test
+    void fetchAndStoreExchangeRates_ShouldHandleCurrencyNotFound() {
+        BundesbankResponse singleCurrencyResponse = BundesbankResponse.success(testDate, "ECB");
+        singleCurrencyResponse.addCurrency("USD", "US Dollar", new BigDecimal("1.1411"));
+
+        when(bundesbankApiClient.getExchangeRates()).thenReturn(Mono.just(singleCurrencyResponse));
+        when(currencyService.findByCode("USD")).thenReturn(Optional.empty());
+        when(exchangeRateRepository.findByRateDate(testDate)).thenReturn(Collections.emptyList());
+        when(currencyRepository.saveAll(anyList())).thenReturn(Collections.emptyList());
+
+        assertDoesNotThrow(() -> {
+            exchangeRateService.fetchAndStoreExchangeRates();
+            Thread.sleep(500);
+        });
+
+        verify(bundesbankApiClient, timeout(1000)).getExchangeRates();
+        verify(currencyService, atLeast(1)).findByCode("USD");
+        verify(currencyRepository).saveAll(anyList());
+        verify(exchangeRateRepository, never()).saveAll(anyList());
     }
 }

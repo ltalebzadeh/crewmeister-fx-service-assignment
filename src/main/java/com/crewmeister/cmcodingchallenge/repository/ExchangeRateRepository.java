@@ -17,6 +17,8 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long
     List<ExchangeRate> findAllWithCurrency();
 
     @Query("SELECT er FROM ExchangeRate er JOIN FETCH er.currency WHERE er.currency.code = :currencyCode AND er.rateDate = :date")
-    Optional<ExchangeRate> findByCurrencyCodeAndDate(@Param("currencyCode") String currencyCode,
-                                                     @Param("date") LocalDate date);
+    Optional<ExchangeRate> findByCurrencyCodeAndRateDate(@Param("currencyCode") String currencyCode,
+                                                         @Param("date") LocalDate date);
+
+    List<ExchangeRate> findByRateDate(LocalDate rateDate);
 }
