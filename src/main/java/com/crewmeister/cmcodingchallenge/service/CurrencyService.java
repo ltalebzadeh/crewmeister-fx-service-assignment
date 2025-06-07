@@ -5,6 +5,7 @@ import com.crewmeister.cmcodingchallenge.entity.Currency;
 import com.crewmeister.cmcodingchallenge.repository.CurrencyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class CurrencyService {
         this.currencyRepository = currencyRepository;
     }
 
+    @Cacheable("currencies")
     public List<CurrencyDto> getAllCurrencies() {
         logger.info("Getting all available currencies");
         List<Currency> currencies = currencyRepository.findAll();

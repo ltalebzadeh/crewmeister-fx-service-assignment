@@ -11,6 +11,8 @@ import com.crewmeister.cmcodingchallenge.repository.CurrencyRepository;
 import com.crewmeister.cmcodingchallenge.repository.ExchangeRateRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +43,7 @@ public class ExchangeRateService {
         this.bundesbankClient = bundesbankClient;
     }
 
+    @Cacheable("allRates")
     public List<ExchangeRateDto> getAllExchangeRates() {
         logger.info("Getting all exchange rates");
         List<ExchangeRate> rates = exchangeRateRepository.findAllWithCurrency();
@@ -49,6 +52,7 @@ public class ExchangeRateService {
                 .collect(Collectors.toList());
     }
 
+    @Cacheable(value = "exchangeRates", key = "#currencyCode + '_' + #date")
     public ExchangeRateDto getExchangeRate(String currencyCode, LocalDate date) {
         logger.info("Getting exchange rate for currency: {} on date: {}", currencyCode, date);
         Optional<ExchangeRate> rate = exchangeRateRepository.findByCurrencyCodeAndRateDate(currencyCode.toUpperCase(), date);
@@ -99,6 +103,7 @@ public class ExchangeRateService {
     }
 
     @Transactional
+    @CacheEvict(value = {"allRates", "exchangeRates"}, allEntries = true)
     public void fetchAndStoreExchangeRates() {
         logger.info("Starting to fetch exchange rates from external API");
         bundesbankClient.getExchangeRates()

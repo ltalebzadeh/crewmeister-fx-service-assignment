@@ -21,6 +21,9 @@ spring:
     init:
       mode: always
 
+  cache:
+    type: simple
+
 ecb:
   api:
     daily-rates-url: https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml
