@@ -13,12 +13,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.CacheManager;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,6 +37,9 @@ class ExchangeRateServiceIntegrationTest {
 
     @Autowired
     private CurrencyRepository currencyRepository;
+
+    @Autowired
+    private CacheManager cacheManager;
 
     private Currency usdCurrency;
     private Currency gbpCurrency;
@@ -111,6 +116,8 @@ class ExchangeRateServiceIntegrationTest {
 
     @Test
     void getAllExchangeRates_ShouldReturnEmptyList_WhenNoDatabaseData() {
+        cacheManager.getCacheNames().forEach(cacheName ->
+                Objects.requireNonNull(cacheManager.getCache(cacheName)).clear());
         exchangeRateRepository.deleteAll();
         List<ExchangeRateDto> result = exchangeRateService.getAllExchangeRates();
 
